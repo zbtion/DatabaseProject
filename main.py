@@ -1,5 +1,6 @@
 import pymssql
 
+stock_code = '2330'
 
 def connect_sql_server():
     # you should create a db.py file to save your database settings
@@ -8,13 +9,17 @@ def connect_sql_server():
     print('SQL login')
     return conn
 
-
 def main():
     try:
         conn = connect_sql_server()
     except Exception as e:
         print(e)
-    print('Hello, World!')
+        return
+    # query stock data by stock code
+    # simulate the martingale strategy
+    # plot the result
+
+    conn.close()
 
 
 def print_result():
