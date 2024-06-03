@@ -1,8 +1,9 @@
 import pymssql
-from db import db_settings
 
 
 def connect_sql_server():
+    # you should create a db.py file to save your database settings
+    from db import db_settings
     conn = pymssql.connect(**db_settings)
     print('SQL login')
     return conn
