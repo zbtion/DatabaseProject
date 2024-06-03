@@ -1,14 +1,8 @@
 import pymssql
+from db import db_settings
 
 
 def connect_sql_server():
-    db_settings = {
-        "host": "127.0.0.1",
-        'user': 'add365',
-        'password': '1234',
-        'database': 'ncu_database',
-        'charset': 'utf8'
-    }
     conn = pymssql.connect(**db_settings)
     print('SQL login')
     return conn
