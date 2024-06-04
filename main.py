@@ -18,7 +18,7 @@ query_stock_data function(Record)
     ...(please add the record, if you have modified the function)
 '''
 def query_stock_data(conn, stock_code):
-    # if you want change the query command, you can modify the command
+    # here to change the command to query the stock data
     command = f"""SELECT [date],[o],[h],[l],[c],[v],[K_value],[D_value]
                 FROM [dbo].[stock_data] 
                 where [stock_code] = {stock_code}
@@ -35,7 +35,7 @@ def query_stock_data(conn, stock_code):
     df = df.drop(columns=[0])
     df.set_index('Date', inplace=True)
 
-    # if you change the command, you should change the column name
+    # if you change the command, you should check the column name
     df.columns = ['Open', 'High', 'Low', 'Close', 'Volume', 'K', 'D']
     
     #print(df.head())
