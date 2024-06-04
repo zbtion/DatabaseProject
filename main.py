@@ -42,6 +42,9 @@ def query_stock_data(conn, stock_code):
 
     return df
 
+def simulate_martingale_strategy(stock_data):
+    # todo: implement the martingale strategy
+    pass
 
 def main():
     try:
@@ -51,13 +54,18 @@ def main():
         return
     # query stock data by stock code
     stock_data = query_stock_data(conn, stock_code)
+
     # simulate the martingale strategy
+    # something output means I am not sure what the output format is ---109502529
+    something_output = simulate_martingale_strategy(stock_data)
+    
     # plot the result
+    print_result(something_output)
 
     conn.close()
 
 
-def print_result():
+def print_result(something):
     print('Result')
 
 
