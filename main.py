@@ -43,6 +43,19 @@ def query_stock_data(conn, stock_code):
     return df
 
 def simulate_martingale_strategy(stock_data):
+    # define the trader
+    holding_share = 0
+    cost = 0
+    cash = 1000000
+
+    # define the behavior
+    def buy():
+        # need to implement the buy behavior
+        pass
+    def sell():
+        # need to implement the sell behavior
+        pass
+
     # todo: implement the martingale strategy
     pass
 
