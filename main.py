@@ -11,11 +11,7 @@ def connect_sql_server():
     print('SQL login')
     return conn
 
-'''
-query_stock_data function(Record)
-    109502529 2024/06/04 add query_stock_data function
-    ...(please add the record, if you have modified the function)
-'''
+
 def query_stock_data(conn, stock_code):
     # here to change the command to query the stock data
     command = f"""SELECT [date],[o],[h],[l],[c],[v],[K_value],[D_value]
