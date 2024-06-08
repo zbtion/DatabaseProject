@@ -49,7 +49,7 @@ def simulate_martingale_strategy(stock_data):
         nonlocal holding_share, cost, cash
         magnification = 2
         if holding_share == 0:
-            holding_share = 1
+            holding_share = 1  # start from 1 share or you can change to other number
             cost += row['Close'] * 1000
             cash -= cost
         else:
