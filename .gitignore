@@ -163,3 +163,4 @@ cython_debug/
 
 # DB settings
 db.py
+lab.py

@@ -1,6 +1,5 @@
 import pymssql
 import pandas as pd
-import numpy as np
 
 
 stock_code = '2330'
@@ -47,17 +46,58 @@ def simulate_martingale_strategy(stock_data):
     holding_share = 0
     cost = 0
     cash = 1000000
+    profit = 0
 
     # define the behavior
-    def buy():
-        # need to implement the buy behavior
-        pass
-    def sell():
-        # need to implement the sell behavior
-        pass
+    def buy(row):
+        nonlocal holding_share, cost, cash
+        magnification = 2
+        if holding_share == 0:
+            holding_share = 1
+            cost += row['Close'] * 1000
+            cash -= cost
+        else:
+            cost += row['Close'] * 1000 * holding_share * magnification
+            cash -= row['Close'] * 1000 * holding_share * magnification
+            holding_share += holding_share * magnification
 
-    # todo: implement the martingale strategy
-    pass
+    def sell(row):
+        nonlocal holding_share, cost, cash, profit
+        if holding_share != 0:
+            profit += row['Close'] * 1000 * holding_share - cost
+            cash += row['Close'] * 1000 * holding_share
+            holding_share = 0
+            cost = 0
+
+    # here to implement the strategy
+    threshold = 0.1
+    buy_times = 0
+    something_output = None
+
+    for index, row in stock_data.iterrows():
+        # if the price is lower than the threshold, buy
+        if (cost - row['Close'] * holding_share) / cost >= threshold or holding_share == 0:
+            if buy_times == 3:
+                sell(row)
+                buy_times = 0
+            else:
+                buy(row)
+                buy_times += 1
+        # if the price is higher than the threshold, sell
+        elif (row['Close'] * holding_share - cost) / cost >= threshold:
+            sell(row)
+        # if the price is between the threshold, do nothing
+        else:
+            continue
+    
+    if holding_share != 0:
+        row = stock_data.iloc[-1]
+        sell(row)
+
+    print('cash:', cash)
+    print('profit:', profit)
+
+    return something_output
 
 def main():
     try:
