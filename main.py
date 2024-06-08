@@ -11,7 +11,6 @@ def connect_sql_server():
     print('SQL login')
     return conn
 
-
 def query_stock_data(conn, stock_code):
     # here to change the command to query the stock data
     command = f"""SELECT [date],[o],[h],[l],[c],[v],[K_value],[D_value]
@@ -36,6 +35,19 @@ def query_stock_data(conn, stock_code):
     #print(df.head())
 
     return df
+
+def find_kd_cross(df):
+    golden_cross, death_cross = [], []
+    for i in range(1, len(df)):
+        prev_row = df.iloc[i - 1]
+        curr_row = df.iloc[i]
+
+        if prev_row['K'] < 20 and prev_row['D'] < 20 and prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D']:
+            golden_cross.append(curr_row.name)  
+        elif prev_row['K'] > 80 and prev_row['D'] > 80 and prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D']:
+            death_cross.append(curr_row.name)  
+
+    return golden_cross, death_cross
 
 def simulate_martingale_strategy(stock_data):
     # define the trader
@@ -69,10 +81,11 @@ def simulate_martingale_strategy(stock_data):
     threshold = 0.1
     buy_times = 0
     something_output = None
+    golden_cross, death_cross = find_kd_cross(stock_data)
 
     for index, row in stock_data.iterrows():
-        # if the price is lower than the threshold, buy
-        if (cost - row['Close'] * holding_share) / cost >= threshold or holding_share == 0:
+        # if the price is lower than the threshold, buy         --add kd condition
+        if (cost and (cost - row['Close'] * holding_share) / cost >= threshold and row.name in golden_cross) or holding_share == 0:
             if buy_times == 3:
                 sell(row)
                 buy_times = 0
@@ -107,7 +120,6 @@ def main():
     # simulate the martingale strategy
     # something output means I am not sure what the output format is ---109502529
     something_output = simulate_martingale_strategy(stock_data)
-    
     # plot the result
     print_result(something_output)
 
