@@ -11,11 +11,7 @@ def connect_sql_server():
     print('SQL login')
     return conn
 
-'''
-query_stock_data function(Record)
-    109502529 2024/06/04 add query_stock_data function
-    ...(please add the record, if you have modified the function)
-'''
+
 def query_stock_data(conn, stock_code):
     # here to change the command to query the stock data
     command = f"""SELECT [date],[o],[h],[l],[c],[v],[K_value],[D_value]
@@ -53,7 +49,7 @@ def simulate_martingale_strategy(stock_data):
         nonlocal holding_share, cost, cash
         magnification = 2
         if holding_share == 0:
-            holding_share = 1
+            holding_share = 1  # start from 1 share or you can change to other number
             cost += row['Close'] * 1000
             cash -= cost
         else:
