@@ -2,7 +2,7 @@ import pymssql
 import pandas as pd
 
 
-stock_code = '2330'
+stock_code = '2303'
 
 def connect_sql_server():
     # you should create a db.py file to save your database settings
@@ -88,7 +88,6 @@ def simulate_martingale_strategy(stock_data):
     # here to implement the strategy
     threshold = 0.1
     buy_times = 0
-    something_output = None
     buy_dates, sell_dates = [], []
     golden_cross, death_cross = find_kd_cross(stock_data)
 
@@ -197,7 +196,7 @@ def print_result(df, buy_dates, sell_dates, strategy):
     mpf.show()
 
     # save
-    fig.savefig(f'{strategy}.jpg')
+    fig.savefig(f'Result/{strategy}_{stock_code}.jpg')
     
     print('Result')
 
