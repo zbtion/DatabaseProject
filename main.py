@@ -2,7 +2,7 @@ import pymssql
 import pandas as pd
 
 
-stock_code = '2303'
+stock_code = '3711'
 
 def connect_sql_server():
     # you should create a db.py file to save your database settings
@@ -64,25 +64,30 @@ def simulate_martingale_strategy(stock_data):
 
     # define the behavior
     def buy(row):
-        nonlocal holding_share, cost, cash
+        nonlocal holding_share, cost, cash, buy_dates
         magnification = 2
-        if holding_share == 0:
+        if holding_share == 0 and cash >= row['Close'] * 1000:
             holding_share = 1  # start from 1 share or you can change to other number
             cost += row['Close'] * 1000
             cash -= cost
+            buy_dates.append(row.name)
             
         else:
+            if cash < row['Close'] * 1000 * holding_share * magnification:
+                return
             cost += row['Close'] * 1000 * holding_share * magnification
             cash -= row['Close'] * 1000 * holding_share * magnification
             holding_share += holding_share * magnification
+            buy_dates.append(row.name)
 
     def sell(row):
-        nonlocal holding_share, cost, cash, profit
+        nonlocal holding_share, cost, cash, profit, sell_dates
         if holding_share != 0:
             profit += row['Close'] * 1000 * holding_share - cost
             cash += row['Close'] * 1000 * holding_share
             holding_share = 0
             cost = 0
+            sell_dates.append(row.name)
 
 
     # here to implement the strategy
@@ -94,19 +99,17 @@ def simulate_martingale_strategy(stock_data):
     for index, row in stock_data.iterrows():
         update_record()
         # if the price is lower than the threshold, buy         --add kd condition
-        if (cost and (cost - row['Close'] * holding_share) / cost >= threshold and row.name in golden_cross) or holding_share == 0:
+        if (cost and (cost - row['Close'] * holding_share) / (cost + 1) >= threshold and row.name in golden_cross) or holding_share == 0:
             if buy_times == 3:
                 sell(row)
                 buy_times = 0
-                sell_dates.append(row.name)
             else:
                 buy(row)
                 buy_times += 1
-                buy_dates.append(row.name)
         # if the price is higher than the threshold, sell
-        elif (row['Close'] * holding_share - cost) / cost >= threshold:
+        elif (row['Close'] * holding_share - cost) / (cost + 1) >= threshold:
             sell(row)
-            sell_dates.append(row.name)
+            buy_times = 0
         # if the price is between the threshold, do nothing
         else:
             continue
