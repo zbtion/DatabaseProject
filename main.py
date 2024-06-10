@@ -107,6 +107,7 @@ def simulate_martingale_strategy(stock_data):
         elif (row['Close'] * holding_share - cost) / cost >= threshold:
             sell(row)
             sell_dates.append(row.name)
+            buy_times = 0
         # if the price is between the threshold, do nothing
         else:
             continue
