@@ -14,7 +14,7 @@ def connect_sql_server():
 def query_stock_data(conn, stock_code):
     # here to change the command to query the stock data
     command = f"""SELECT [date],[o],[h],[l],[c],[v],[K_value],[D_value]
-                FROM [dbo].[stock_data] 
+                FROM [dbo].[history_price] 
                 where [stock_code] = {stock_code}
                 order by [date] asc"""
     cursor = conn.cursor()
@@ -67,14 +67,18 @@ def simulate_martingale_strategy(stock_data):
         nonlocal holding_share, cost, cash
         magnification = 2
         if holding_share == 0:
-            holding_share = 1  # start from 1 share or you can change to other number
-            cost += row['Close'] * 1000
-            cash -= cost
+            required_cash = row['Close'] * 1000
+            if cash >= required_cash:
+                holding_share = 1  # start from 1 share or you can change to other number
+                cost += row['Close'] * 1000
+                cash -= cost
             
         else:
-            cost += row['Close'] * 1000 * holding_share * magnification
-            cash -= row['Close'] * 1000 * holding_share * magnification
-            holding_share += holding_share * magnification
+            required_cash = row['Close'] * 1000 * holding_share * magnification
+            if cash >= required_cash:
+                cost += row['Close'] * 1000 * holding_share * magnification
+                cash -= row['Close'] * 1000 * holding_share * magnification
+                holding_share += holding_share * magnification
 
     def sell(row):
         nonlocal holding_share, cost, cash, profit
@@ -94,7 +98,7 @@ def simulate_martingale_strategy(stock_data):
     for index, row in stock_data.iterrows():
         update_record()
         # if the price is lower than the threshold, buy         --add kd condition
-        if (cost and (cost - row['Close'] * holding_share) / (cost + 1) >= threshold and row.name in golden_cross) or holding_share == 0:
+        if ((cost - row['Close'] * holding_share) / cost >= threshold ) or (holding_share == 0 and row.name in death_cross):
             if buy_times == 3:
                 sell(row)
                 buy_times = 0
