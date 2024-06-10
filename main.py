@@ -2,7 +2,8 @@ import pymssql
 import pandas as pd
 
 
-stock_code = '3711'
+stock_code = '2303,2308,2317,2330,2382,2412,2454,2881,2891,3711'
+#stock_code = '2454'
 
 def connect_sql_server():
     # you should create a db.py file to save your database settings
@@ -41,10 +42,11 @@ def find_kd_cross(df):
     for i in range(1, len(df)):
         prev_row = df.iloc[i - 1]
         curr_row = df.iloc[i]
-
-        if prev_row['K'] < 20 and prev_row['D'] < 20 and prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D']:
-            golden_cross.append(curr_row.name)  
-        elif prev_row['K'] > 80 and prev_row['D'] > 80 and prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D']:
+        # prev_row['K'] < 20 and prev_row['D'] < 20 and
+        if prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D']:
+            golden_cross.append(curr_row.name)
+        # prev_row['K'] > 80 and prev_row['D'] > 80 and
+        elif prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D']:
             death_cross.append(curr_row.name)  
 
     return golden_cross, death_cross
@@ -53,8 +55,9 @@ def simulate_martingale_strategy(stock_data):
     # define the trader
     holding_share = 0
     cost = 0
-    cash = 1000000
+    cash = 10000000
     profit = 0
+    last_sell_price = None
     record = {'holding_share':[], 'cost':[], 'cash':[], 'profit':[]}
 
     def update_record():
@@ -64,29 +67,31 @@ def simulate_martingale_strategy(stock_data):
 
     # define the behavior
     def buy(row):
-        nonlocal holding_share, cost, cash
+        nonlocal holding_share, cost, cash, buy_dates
         magnification = 2
-        if holding_share == 0:
-            required_cash = row['Close'] * 1000
-            if cash >= required_cash:
-                holding_share = 1  # start from 1 share or you can change to other number
-                cost += row['Close'] * 1000
-                cash -= cost
+        if holding_share == 0 and cash >= row['Close'] * 1000:
+            holding_share = 1  # start from 1 share or you can change to other number
+            cost += row['Close'] * 1000
+            cash -= cost
+            buy_dates.append(row.name)
             
         else:
-            required_cash = row['Close'] * 1000 * holding_share * magnification
-            if cash >= required_cash:
-                cost += row['Close'] * 1000 * holding_share * magnification
-                cash -= row['Close'] * 1000 * holding_share * magnification
-                holding_share += holding_share * magnification
+            if cash < row['Close'] * 1000 * holding_share * magnification:
+                return
+            cost += row['Close'] * 1000 * holding_share * magnification
+            cash -= row['Close'] * 1000 * holding_share * magnification
+            holding_share += holding_share * magnification
+            buy_dates.append(row.name)
 
     def sell(row):
-        nonlocal holding_share, cost, cash, profit
+        nonlocal holding_share, cost, cash, profit, sell_dates, last_sell_price 
         if holding_share != 0:
+            last_sell_price = row['Close']
             profit += row['Close'] * 1000 * holding_share - cost
             cash += row['Close'] * 1000 * holding_share
             holding_share = 0
             cost = 0
+            sell_dates.append(row.name)
 
 
     # here to implement the strategy
@@ -98,20 +103,21 @@ def simulate_martingale_strategy(stock_data):
     for index, row in stock_data.iterrows():
         update_record()
         # if the price is lower than the threshold, buy         --add kd condition
-        if ((cost - row['Close'] * holding_share) / cost >= threshold ) or (holding_share == 0 and row.name in death_cross):
-            if buy_times == 3:
-                sell(row)
-                buy_times = 0
-                sell_dates.append(row.name)
-            else:
-                buy(row)
-                buy_times += 1
-                buy_dates.append(row.name)
+        if (cost and ((row['Close'] * holding_share * 1000) / cost <= (1-threshold) ) and row.name in golden_cross) or holding_share == 0:
+            if last_sell_price is None or row['Close'] <= last_sell_price * 0.95 or row['Close'] >= last_sell_price * 1.05:
+                if buy_times == 3:
+                    sell(row)
+                    buy_times = 0
+                    #print('sell',cash)
+                else:
+                    buy(row)
+                    buy_times += 1
+                    #print('buy',cash)
         # if the price is higher than the threshold, sell
-        elif (row['Close'] * holding_share - cost) / (cost + 1) >= threshold:
+        elif (row['Close'] * holding_share * 1000) / cost >= (1 + threshold):
             sell(row)
-            sell_dates.append(row.name)
             buy_times = 0
+            #print('sell',cash)
         # if the price is between the threshold, do nothing
         else:
             continue
@@ -133,19 +139,22 @@ def main():
         print(e)
         return
     # query stock data by stock code
-    stock_data = query_stock_data(conn, stock_code)
+    stock_codes = stock_code.split(',')
+    for code in stock_codes:
+        stock_data = query_stock_data(conn, code)
 
-    # simulate the martingale strategy
-    # something output means I am not sure what the output format is ---109502529
-    # change somethingoutput to record, buy_dates and sell_dates ---112522023
-    record_mar, buy_dates_mar, sell_dates_mar = simulate_martingale_strategy(stock_data)
-    # record_gb, buy_date_gb, sell_dates_gb = simulate_gb_strategy(stock_data)
-    # calculate cash flow(?) if save in a bank(?)
+        # simulate the martingale strategy
+        # something output means I am not sure what the output format is ---109502529
+        # change somethingoutput to record, buy_dates and sell_dates ---112522023
+        print(code)
+        record_mar, buy_dates_mar, sell_dates_mar = simulate_martingale_strategy(stock_data)
+        # record_gb, buy_date_gb, sell_dates_gb = simulate_gb_strategy(stock_data)
+        # calculate cash flow(?) if save in a bank(?)
 
-    # plot the result
-    print_result(stock_data, buy_dates_mar, sell_dates_mar, 'Martinggale')
-    # want to add subplot of cost/profit/cash flow under the result, add later :)
-    # print_record(record_mar)
+        # plot the result
+        #print_result(stock_data, buy_dates_mar, sell_dates_mar, 'Martinggale')
+        # want to add subplot of cost/profit/cash flow under the result, add later :)
+        # print_record(record_mar)
 
     conn.close()
 
