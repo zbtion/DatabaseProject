@@ -2,7 +2,7 @@ import pymssql
 import pandas as pd
 
 
-stock_code = '3711'
+stock_code = '2330'
 
 def connect_sql_server():
     # you should create a db.py file to save your database settings
@@ -14,7 +14,7 @@ def connect_sql_server():
 def query_stock_data(conn, stock_code):
     # here to change the command to query the stock data
     command = f"""SELECT [date],[o],[h],[l],[c],[v],[K_value],[D_value]
-                FROM [dbo].[stock_data] 
+                FROM [dbo].[history_stock_info] 
                 where [stock_code] = {stock_code}
                 order by [date] asc"""
     cursor = conn.cursor()
@@ -65,7 +65,7 @@ def simulate_martingale_strategy(stock_data):
     # define the behavior
     def buy(row):
         nonlocal holding_share, cost, cash, buy_dates
-        magnification = 2
+        magnification = 0.3
         if holding_share == 0 and cash >= row['Close'] * 1000:
             holding_share = 1  # start from 1 share or you can change to other number
             cost += row['Close'] * 1000
@@ -99,7 +99,7 @@ def simulate_martingale_strategy(stock_data):
     for index, row in stock_data.iterrows():
         update_record()
         # if the price is lower than the threshold, buy         --add kd condition
-        if (cost and (cost - row['Close'] * holding_share) / (cost + 1) >= threshold and row.name in golden_cross) or holding_share == 0:
+        if (cost and (cost - row['Close'] * holding_share * 1000) / cost >= threshold and row.name in golden_cross) or holding_share == 0:
             if buy_times == 3:
                 sell(row)
                 buy_times = 0
@@ -107,7 +107,7 @@ def simulate_martingale_strategy(stock_data):
                 buy(row)
                 buy_times += 1
         # if the price is higher than the threshold, sell
-        elif (row['Close'] * holding_share - cost) / (cost + 1) >= threshold:
+        elif (row['Close'] * holding_share * 1000 - cost) / cost >= threshold:
             sell(row)
             buy_times = 0
         # if the price is between the threshold, do nothing
