@@ -53,7 +53,7 @@ def simulate_martingale_strategy(stock_data):
     # define the trader
     holding_share = 0
     cost = 0
-    cash = 1000000
+    cash = 10000000
     profit = 0
     record = {'holding_share':[], 'cost':[], 'cash':[], 'profit':[]}
 
@@ -65,7 +65,7 @@ def simulate_martingale_strategy(stock_data):
     # define the behavior
     def buy(row):
         nonlocal holding_share, cost, cash, buy_dates
-        magnification = 2
+        magnification = 5
         if holding_share == 0 and cash >= row['Close'] * 1000:
             holding_share = 1  # start from 1 share or you can change to other number
             cost += row['Close'] * 1000
@@ -91,23 +91,23 @@ def simulate_martingale_strategy(stock_data):
 
 
     # here to implement the strategy
-    threshold = 0.1
+    threshold = 0.2
     buy_times = 0
     buy_dates, sell_dates = [], []
     golden_cross, death_cross = find_kd_cross(stock_data)
 
     for index, row in stock_data.iterrows():
         update_record()
-        # if the price is lower than the threshold, buy         --add kd condition
-        if (cost and (cost - row['Close'] * holding_share) / (cost + 1) >= threshold and row.name in golden_cross) or holding_share == 0:
-            if buy_times == 3:
+        # if the price is lower than the threshold, buy         --add kd condition  
+        if ((cost - row['Close'] * 1000 * holding_share) / (cost + 1) >= threshold) or (holding_share == 0 and row.name in golden_cross):
+            if buy_times == 4:
                 sell(row)
                 buy_times = 0
             else:
                 buy(row)
                 buy_times += 1
         # if the price is higher than the threshold, sell
-        elif (row['Close'] * holding_share - cost) / (cost + 1) >= threshold:
+        elif (row['Close'] * 1000 * holding_share - cost) / (cost + 1) >= threshold and row.name in death_cross:
             sell(row)
             buy_times = 0
         # if the price is between the threshold, do nothing
@@ -157,11 +157,11 @@ def print_result(df, buy_dates, sell_dates, strategy):
         buy, sell = [], []
         for index, row in df.iterrows():
             if row.name in buy_dates:
-                buy.append(row['Close']-20)
+                buy.append(row['Close']*0.95)
             else:
                 buy.append(np.nan)
             if row.name in sell_dates:
-                sell.append(row['Close']+20)
+                sell.append(row['Close']*1.05)
             else: 
                 sell.append(np.nan)
         return buy, sell
