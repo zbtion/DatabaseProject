@@ -140,7 +140,6 @@ def simulate_martingale_strategy(stock_data):
     cost = 0
     cash = 10000000
     profit = 0
-    last_sell_price = None
     record = {'holding_share':[], 'cost':[], 'cash':[], 'profit':[]}
 
     def update_record():
@@ -160,9 +159,8 @@ def simulate_martingale_strategy(stock_data):
         buy_dates.append(row.name)
 
     def sell(row):
-        nonlocal holding_share, cost, cash, profit, sell_dates, last_sell_price 
+        nonlocal holding_share, cost, cash, profit, sell_dates
         if holding_share != 0:
-            last_sell_price = row['Close']
             profit += row['Close'] * holding_share - cost
             cash += row['Close'] * holding_share
             holding_share = 0
@@ -181,15 +179,14 @@ def simulate_martingale_strategy(stock_data):
         update_record()
         # if the price is lower than the threshold, buy
         if (((row['Close'] * holding_share) / (cost+1) <= (1 - threshold))) or (holding_share == 0 and row.name in golden_cross):
-            if last_sell_price is None or row['Close'] <= last_sell_price * 0.95 or row['Close'] >= last_sell_price * 1.05 and row.name in golden_cross:
-                if buy_times == 4:
-                    sell(row)
-                    buy_times = 0
-                    investment_amount = initial_investment
-                else:
-                    buy(row, investment_amount)
-                    investment_amount *= 2   # double the investment amount each time
-                    buy_times += 1
+            if buy_times == 4:
+                sell(row)
+                buy_times = 0
+                investment_amount = initial_investment
+            else:
+                buy(row, investment_amount)
+                investment_amount *= 2   # double the investment amount each time
+                buy_times += 1
         # if the price is higher than the threshold, sell
         elif ((row['Close'] * holding_share) / (cost + 1) >= (1 + threshold)) and row.name in death_cross :
             sell(row)
