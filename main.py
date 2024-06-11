@@ -3,9 +3,9 @@ import pandas as pd
 
 
 stock_code = '2303,2308,2317,2330,2382,2412,2454,2881,2891,3711'
-#stock_code = '2454'
+#stock_code = '2303'
 #stock_code = '2891'
-
+#stock_code = '2303'
 def connect_sql_server():
     # you should create a db.py file to save your database settings
     from db import db_settings
@@ -43,11 +43,11 @@ def find_kd_cross(df):
     for i in range(1, len(df)):
         prev_row = df.iloc[i - 1]
         curr_row = df.iloc[i]
-        # prev_row['K'] < 20 and prev_row['D'] < 20 and
-        if prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D']:
+        # 
+        if prev_row['K'] < 20 and prev_row['D'] < 20 and prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D']:
             golden_cross.append(curr_row.name)
-        # prev_row['K'] > 80 and prev_row['D'] > 80 and
-        elif prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D']:
+        # 
+        elif prev_row['K'] > 80 and prev_row['D'] > 80 and prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D']:
             death_cross.append(curr_row.name)  
 
     return golden_cross, death_cross
@@ -133,6 +133,7 @@ def find_kd_cross(df):
 #     #print('rate of return:',profit/10000000)
 
 #     return record, buy_dates, sell_dates
+
 def simulate_martingale_strategy(stock_data):
     # define the trader
     holding_share = 0
@@ -169,8 +170,8 @@ def simulate_martingale_strategy(stock_data):
             sell_dates.append(row.name)
 
     # here to implement the strategy
-    threshold = 0.1
-    initial_investment = 1000000
+    threshold = 0.15
+    initial_investment = 500000
     investment_amount = initial_investment
     buy_times = 0
     buy_dates, sell_dates = [], []
@@ -179,18 +180,18 @@ def simulate_martingale_strategy(stock_data):
     for index, row in stock_data.iterrows():
         update_record()
         # if the price is lower than the threshold, buy
-        if (cost and ((row['Close'] * holding_share) / cost <= (1 - threshold)) and row.name in golden_cross) or (holding_share == 0 and row.name in golden_cross):
-            #if last_sell_price is None or row['Close'] <= last_sell_price * 0.90 or row['Close'] >= last_sell_price * 1.1:
-                if buy_times == 3:
+        if (((row['Close'] * holding_share) / (cost+1) <= (1 - threshold))) or (holding_share == 0 and row.name in golden_cross):
+            if last_sell_price is None or row['Close'] <= last_sell_price * 0.95 or row['Close'] >= last_sell_price * 1.05 and row.name in golden_cross:
+                if buy_times == 4:
                     sell(row)
                     buy_times = 0
                     investment_amount = initial_investment
                 else:
                     buy(row, investment_amount)
-                    investment_amount *= 2  # double the investment amount each time
+                    investment_amount *= 2   # double the investment amount each time
                     buy_times += 1
         # if the price is higher than the threshold, sell
-        elif ((row['Close'] * holding_share) / (cost + 1) >= (1 + 0.3)) and row.name in death_cross :
+        elif ((row['Close'] * holding_share) / (cost + 1) >= (1 + threshold)) and row.name in death_cross :
             sell(row)
             buy_times = 0
             investment_amount = initial_investment
