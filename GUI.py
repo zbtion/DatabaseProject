@@ -128,7 +128,7 @@ def main():
         try:
             initial_cash = float(initial_cash_entry.get())
             threshold = float(threshold_entry.get()) / 100
-            initial_investment = float(initial_investment_entry.get())
+            initial_investment_percent = float(initial_investment_entry.get()) / 100
             max_buy_times = int(max_buy_times_entry.get())
             use_trailing_stop = use_trailing_stop_var.get()
             trailing_stop_percent = float(trailing_stop_percent_entry.get()) / 100 if use_trailing_stop else 0
@@ -137,7 +137,14 @@ def main():
         except ValueError:
             messagebox.showerror("Invalid Input", "Please enter valid values.")
             return
+        
+        initial_investment = initial_cash * initial_investment_percent
+        total_investment = initial_investment * (1 - buy_multiplier**max_buy_times) / (1 - buy_multiplier)
 
+        if total_investment > initial_cash:
+            messagebox.showerror("Invalid Input", "Total investment exceeds initial cash. Please adjust the parameters.")
+            return
+        
         try:
             conn = connect_sql_server()
         except Exception as e:
@@ -149,6 +156,7 @@ def main():
             stock_data = query_stock_data(conn, code)
             print(code)
             record, buy_dates, sell_dates = simulate_martingale_strategy(stock_data, threshold, initial_investment, initial_cash, max_buy_times, use_trailing_stop, trailing_stop_percent, stop_profit_percent, buy_multiplier)
+            print_result(stock_data, buy_dates, sell_dates, 'Martinggale')
 
         conn.close()
         messagebox.showinfo("Simulation Complete", "The simulation has been completed.")
@@ -181,7 +189,7 @@ def main():
     threshold_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
     threshold_entry.grid(column=1, row=1, padx=10, pady=5)
 
-    ttk.Label(root, text="Initial Investment").grid(column=0, row=2, padx=10, pady=5)
+    ttk.Label(root, text="Initial Investment (%)").grid(column=0, row=2, padx=10, pady=5)
     initial_investment_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
     initial_investment_entry.grid(column=1, row=2, padx=10, pady=5)
 
@@ -211,6 +219,60 @@ def main():
     submit_button.grid(column=0, row=8, columnspan=2, padx=10, pady=20)
 
     root.mainloop()
+
+def print_result(df, buy_dates, sell_dates, strategy):
+    import mplfinance as mpf
+    import numpy as np
+
+    def get_mark(df, buy_dates, sell_dates):
+        buy, sell = [], []
+        for index, row in df.iterrows():
+            if row.name in buy_dates:
+                buy.append(row['Close']-10)
+            else:
+                buy.append(np.nan)
+            if row.name in sell_dates:
+                sell.append(row['Close']+10)
+            else: 
+                sell.append(np.nan)
+        return buy, sell
+
+    mc = mpf.make_marketcolors(up='r', down='g', edge='', wick='inherit', volume='inherit')
+    s = mpf.make_mpf_style(base_mpf_style='charles', marketcolors=mc)
+    buy, sell = get_mark(df, buy_dates, sell_dates)
+    apds = [
+     mpf.make_addplot(buy,type='scatter',markersize=100,marker='^'),
+     mpf.make_addplot(sell,type='scatter',markersize=100,marker='v'),
+    ]
+
+    fig, axlist = mpf.plot(df,type='candle', style=s,mav=(5,10),volume=True,addplot=apds, returnfig=True)
+    newxticks = []
+    newlabels = []
+    format = '%b-%d'
+
+    # copy and format the existing xticks:
+    for xt in axlist[0].get_xticks():
+        p = int(xt)
+        if p >= 0 and p < len(df):
+            ts = df.index[p]
+            newxticks.append(p)
+            newlabels.append(ts.strftime(format))
+
+    # Here we create the final tick and tick label:
+    newxticks.append(len(df)-1)
+    newlabels.append(df.index[len(df)-1].strftime(format))
+
+    # set the xticks and labels with the new ticks and labels:
+    axlist[0].set_xticks(newxticks)
+    axlist[0].set_xticklabels(newlabels)
+
+    # now display the plot:
+    mpf.show()
+
+    # save
+    fig.savefig(f'Result/{strategy}_{stock_code}.jpg')
+    
+    print('Result')
 
 if __name__ == '__main__':
     main()
