@@ -3,7 +3,7 @@ import pandas as pd
 
 
 stock_code = '2303,2308,2317,2330,2382,2412,2454,2881,2891,3711'
-#stock_code = '2303'
+#stock_code = '2382'
 #stock_code = '2891'
 #stock_code = '2303'
 def connect_sql_server():
@@ -168,30 +168,48 @@ def simulate_martingale_strategy(stock_data):
             sell_dates.append(row.name)
 
     # here to implement the strategy
-    threshold = 0.15
-    initial_investment = 500000
+    threshold = 0.1
+    initial_investment = 250000
     investment_amount = initial_investment
     buy_times = 0
     buy_dates, sell_dates = [], []
     golden_cross, death_cross = find_kd_cross(stock_data)
 
+    monitor_levels = [0.3 + i * 0.1 for i in range(int((2 - 0.3) / 0.1) + 1)]
+    max_profit_level = 0
+    
     for index, row in stock_data.iterrows():
         update_record()
         # if the price is lower than the threshold, buy
         if (((row['Close'] * holding_share) / (cost+1) <= (1 - threshold))) or (holding_share == 0 and row.name in golden_cross):
-            if buy_times == 4:
+            if buy_times == 5:
                 sell(row)
                 buy_times = 0
                 investment_amount = initial_investment
+                max_price = 0
             else:
                 buy(row, investment_amount)
                 investment_amount *= 2   # double the investment amount each time
                 buy_times += 1
+                max_price = row['Close']
         # if the price is higher than the threshold, sell
-        elif ((row['Close'] * holding_share) / (cost + 1) >= (1 + threshold)) and row.name in death_cross :
-            sell(row)
-            buy_times = 0
-            investment_amount = initial_investment
+        elif holding_share > 0:
+            current_profit_percent = (row['Close'] - (cost / holding_share)) / (cost / holding_share)
+            # Update max_profit_level based on current_profit_percent
+            for level in monitor_levels:
+                if current_profit_percent >= level:
+                    max_profit_level = max(max_profit_level, level)
+                    
+
+            # Check for selling conditions based on max_profit_level
+            if max_profit_level > 0:
+                next_level = max_profit_level - 0.1  # Example: 20% level, 15% next level
+                if current_profit_percent < next_level:
+                    sell(row)
+                    buy_times = 0
+                    investment_amount = initial_investment
+                    max_profit_level = 0  # Reset max_profit_level after selling
+                    continue
         # if the price is between the threshold, do nothing
         else:
             continue
