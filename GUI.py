@@ -3,7 +3,7 @@ from tkinter import ttk
 from tkinter import messagebox
 import pymssql
 import pandas as pd
-stock_code = '2303,2308,2317,2330,2382,2412,2454,2881,2891,3711'
+#stock_code = '2303,2308,2317,2330,2382,2412,2454,2881,2891,3711'
 def connect_sql_server():
     from db import db_settings
     conn = pymssql.connect(**db_settings)
@@ -126,6 +126,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
 def main():
     def on_submit():
         try:
+            stock_codes = stock_code_entry.get().split(',')
             initial_cash = float(initial_cash_entry.get())
             threshold = float(threshold_entry.get()) / 100
             initial_investment_percent = float(initial_investment_entry.get()) / 100
@@ -151,12 +152,13 @@ def main():
             print(e)
             return
 
-        stock_codes = stock_code.split(',')
+
         for code in stock_codes:
+            code = code.strip()
             stock_data = query_stock_data(conn, code)
             print(code)
             record, buy_dates, sell_dates = simulate_martingale_strategy(stock_data, threshold, initial_investment, initial_cash, max_buy_times, use_trailing_stop, trailing_stop_percent, stop_profit_percent, buy_multiplier)
-            print_result(stock_data, buy_dates, sell_dates, 'Martinggale')
+            print_result(stock_data, buy_dates, sell_dates, 'Martinggale',code)
 
         conn.close()
         messagebox.showinfo("Simulation Complete", "The simulation has been completed.")
@@ -181,46 +183,50 @@ def main():
 
     validate_float_command = root.register(validate_float)
 
-    ttk.Label(root, text="Initial Cash").grid(column=0, row=0, padx=10, pady=5)
+    ttk.Label(root, text="Stock Codes (comma separated)").grid(column=0, row=0, padx=10, pady=5)
+    stock_code_entry = ttk.Entry(root, width=50)  
+    stock_code_entry.grid(column=1, row=0, padx=10, pady=5)
+
+    ttk.Label(root, text="Initial Cash").grid(column=0, row=1, padx=10, pady=5)
     initial_cash_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
-    initial_cash_entry.grid(column=1, row=0, padx=10, pady=5)
+    initial_cash_entry.grid(column=1, row=1, padx=10, pady=5)
 
-    ttk.Label(root, text="Threshold (%)").grid(column=0, row=1, padx=10, pady=5)
+    ttk.Label(root, text="Threshold (%)").grid(column=0, row=2, padx=10, pady=5)
     threshold_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
-    threshold_entry.grid(column=1, row=1, padx=10, pady=5)
+    threshold_entry.grid(column=1, row=2, padx=10, pady=5)
 
-    ttk.Label(root, text="Initial Investment (%)").grid(column=0, row=2, padx=10, pady=5)
+    ttk.Label(root, text="Initial Investment (%)").grid(column=0, row=3, padx=10, pady=5)
     initial_investment_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
-    initial_investment_entry.grid(column=1, row=2, padx=10, pady=5)
+    initial_investment_entry.grid(column=1, row=3, padx=10, pady=5)
 
-    ttk.Label(root, text="Max Buy Times").grid(column=0, row=3, padx=10, pady=5)
+    ttk.Label(root, text="Max Buy Times").grid(column=0, row=4, padx=10, pady=5)
     max_buy_times_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
-    max_buy_times_entry.grid(column=1, row=3, padx=10, pady=5)
+    max_buy_times_entry.grid(column=1, row=4, padx=10, pady=5)
 
     use_trailing_stop_var = tk.BooleanVar()
     use_trailing_stop_check = ttk.Checkbutton(root, text="Use Trailing Stop", variable=use_trailing_stop_var)
-    use_trailing_stop_check.grid(column=0, row=4, columnspan=2, padx=10, pady=5)
+    use_trailing_stop_check.grid(column=0, row=5, columnspan=2, padx=10, pady=5)
     use_trailing_stop_var.trace_add('write', toggle_trailing_stop)
 
-    ttk.Label(root, text="Trailing Stop (%)").grid(column=0, row=5, padx=10, pady=5)
+    ttk.Label(root, text="Trailing Stop (%)").grid(column=0, row=6, padx=10, pady=5)
     trailing_stop_percent_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
-    trailing_stop_percent_entry.grid(column=1, row=5, padx=10, pady=5)
+    trailing_stop_percent_entry.grid(column=1, row=6, padx=10, pady=5)
     trailing_stop_percent_entry.config(state='disabled')
 
-    ttk.Label(root, text="Stop Profit (%)").grid(column=0, row=6, padx=10, pady=5)
+    ttk.Label(root, text="Stop Profit (%)").grid(column=0, row=7, padx=10, pady=5)
     stop_profit_percent_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
-    stop_profit_percent_entry.grid(column=1, row=6, padx=10, pady=5)
+    stop_profit_percent_entry.grid(column=1, row=7, padx=10, pady=5)
 
-    ttk.Label(root, text="Buy Multiplier").grid(column=0, row=7, padx=10, pady=5)
+    ttk.Label(root, text="Buy Multiplier").grid(column=0, row=8, padx=10, pady=5)
     buy_multiplier_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
-    buy_multiplier_entry.grid(column=1, row=7, padx=10, pady=5)
+    buy_multiplier_entry.grid(column=1, row=8, padx=10, pady=5)
 
     submit_button = ttk.Button(root, text="Run Simulation", command=on_submit)
-    submit_button.grid(column=0, row=8, columnspan=2, padx=10, pady=20)
+    submit_button.grid(column=0, row=9, columnspan=2, padx=10, pady=20)
 
     root.mainloop()
 
-def print_result(df, buy_dates, sell_dates, strategy):
+def print_result(df, buy_dates, sell_dates, strategy,stock_code):
     import mplfinance as mpf
     import numpy as np
 
