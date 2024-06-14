@@ -1,7 +1,7 @@
 import pymssql
 import pandas as pd
 
-stock_code = '2330'
+#stock_code = '2330'
 
 def connect_sql_server():
     # you should create a db.py file to save your database settings
