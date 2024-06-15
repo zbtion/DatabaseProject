@@ -35,9 +35,9 @@ def find_kd_cross(df):
     for i in range(1, len(df)):
         prev_row = df.iloc[i - 1]
         curr_row = df.iloc[i]
-        if prev_row['K'] < 20 and prev_row['D'] < 20 and prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D']:
+        if prev_row['K'] < 20 and prev_row['D'] < 20 and prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D'] and curr_row['K'] < 20 and curr_row['D'] < 20:
             golden_cross.append(curr_row.name)
-        elif prev_row['K'] > 80 and prev_row['D'] > 80 and prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D']:
+        elif prev_row['K'] > 80 and prev_row['D'] > 80 and prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D'] and curr_row['K'] > 80 and curr_row['D'] > 80:
             death_cross.append(curr_row.name)  
 
     return golden_cross, death_cross
@@ -83,7 +83,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
     
     for index, row in stock_data.iterrows():
         update_record()
-        if (((row['Close'] * holding_share) / (cost+1) <= (1 - threshold))) or (holding_share == 0 and row.name in golden_cross):
+        if (((row['Close'] * holding_share) / (cost+1) <= (1 - threshold)) and holding_share != 0) or (holding_share == 0 and row.name in golden_cross):
             if buy_times == max_buy_times:
                 sell(row)
                 buy_times = 0

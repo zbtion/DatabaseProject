@@ -14,6 +14,7 @@ def connect_sql_server():
     print('SQL login')
     return conn
 
+
 def query_stock_data(conn, stock_code):
     # here to change the command to query the stock data
     command = f"""SELECT [date],[o],[h],[l],[c],[v],[K_value],[D_value]
@@ -22,11 +23,11 @@ def query_stock_data(conn, stock_code):
                 order by [date] asc"""
     cursor = conn.cursor()
     cursor.execute(command)
-    
+
     arr = []
     for row in cursor:
         arr.append(row)
-    
+
     df = pd.DataFrame(arr)
     df['Date'] = pd.to_datetime(df[0])
     df = df.drop(columns=[0])
@@ -34,10 +35,11 @@ def query_stock_data(conn, stock_code):
 
     # if you change the command, you should check the column name
     df.columns = ['Open', 'High', 'Low', 'Close', 'Volume', 'K', 'D']
-    
+
     #print(df.head())
 
     return df
+
 
 def find_kd_cross(df):
     golden_cross, death_cross = [], []
@@ -45,20 +47,22 @@ def find_kd_cross(df):
         prev_row = df.iloc[i - 1]
         curr_row = df.iloc[i]
 
-        if prev_row['K'] < 20 and prev_row['D'] < 20 and prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D']:
-            golden_cross.append(curr_row.name)  
-        elif prev_row['K'] > 80 and prev_row['D'] > 80 and prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D']:
-            death_cross.append(curr_row.name)  
+        if prev_row['K'] < 20 and prev_row['D'] < 20 and prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D'] and curr_row['K'] < 20 and curr_row['D'] < 20:
+            golden_cross.append(curr_row.name)
+        elif prev_row['K'] > 80 and prev_row['D'] > 80 and prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D'] and curr_row['K'] > 80 and curr_row['D'] > 80:
+            death_cross.append(curr_row.name)
 
     return golden_cross, death_cross
 
-def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_times, initial_holding_share, magnification):
+
+def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_times, initial_holding_share,
+                                 magnification):
     # define the trader
     holding_share = 0
     cost = 0
     cash = initial_cash
     profit = 0
-    record = {'holding_share':[], 'cost':[], 'cash':[], 'profit':[]}
+    record = {'holding_share': [], 'cost': [], 'cash': [], 'profit': []}
 
     def update_record():
         nonlocal holding_share, cost, cash, profit, record
@@ -74,7 +78,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
             cost += row['Close'] * 1000
             cash -= cost
             buy_dates.append(row.name)
-            
+
         else:
             if cash < row['Close'] * 1000 * holding_share * magnification:
                 return
@@ -92,7 +96,6 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
             cost = 0
             sell_dates.append(row.name)
 
-
     # here to implement the strategy
     buy_times = 0
     buy_dates, sell_dates = [], []
@@ -101,7 +104,8 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
     for index, row in stock_data.iterrows():
         update_record()
         # if the price is lower than the threshold, buy         --add kd condition  
-        if ((cost - row['Close'] * 1000 * holding_share) / (cost + 1) >= threshold) or (holding_share == 0 and row.name in golden_cross):
+        if (((cost - row['Close'] * 1000 * holding_share) / (cost + 1) >= threshold) and holding_share != 0) or (
+                holding_share == 0 and row.name in golden_cross):
             if buy_times == max_buy_times:
                 sell(row)
                 buy_times = 0
@@ -115,7 +119,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
         # if the price is between the threshold, do nothing
         else:
             continue
-        
+
     if holding_share != 0:
         row = stock_data.iloc[-1]
         sell(row)
@@ -126,6 +130,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
     print('profit:', profit)
 
     return record, buy_dates, sell_dates, cash, profit, rate_of_return
+
 
 def main():
     def on_submit():
@@ -139,20 +144,24 @@ def main():
         except ValueError:
             messagebox.showerror("Invalid Input", "Please enter valid values.")
             return
-        
+
         try:
             conn = connect_sql_server()
         except Exception as e:
             print(e)
             return
 
-
         for code in stock_codes:
             code = code.strip()
             stock_data = query_stock_data(conn, code)
             print(code)
-            record, buy_dates, sell_dates, cash, profit, rate_of_return = simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_times, initial_holding_share, magnification)
-            print_result(stock_data, buy_dates, sell_dates, 'Martinggale', code,cash, profit, rate_of_return )
+            record, buy_dates, sell_dates, cash, profit, rate_of_return = simulate_martingale_strategy(stock_data,
+                                                                                                       threshold,
+                                                                                                       initial_cash,
+                                                                                                       max_buy_times,
+                                                                                                       initial_holding_share,
+                                                                                                       magnification)
+            print_result(stock_data, buy_dates, sell_dates, 'Martinggale', code, cash, profit, rate_of_return)
 
         conn.close()
         messagebox.showinfo("Simulation Complete", "The simulation has been completed.")
@@ -173,7 +182,7 @@ def main():
     validate_float_command = root.register(validate_float)
 
     ttk.Label(root, text="Stock Codes (comma separated)").grid(column=0, row=0, padx=10, pady=5)
-    stock_code_entry = ttk.Entry(root, width=50)  
+    stock_code_entry = ttk.Entry(root, width=50)
     stock_code_entry.grid(column=1, row=0, padx=10, pady=5)
 
     # 初始現金
@@ -208,7 +217,6 @@ def main():
     root.mainloop()
 
 
-
 def print_result(df, buy_dates, sell_dates, strategy, stock_code, cash, profit, rate_of_return):
     import mplfinance as mpf
     import numpy as np
@@ -217,12 +225,12 @@ def print_result(df, buy_dates, sell_dates, strategy, stock_code, cash, profit, 
         buy, sell = [], []
         for index, row in df.iterrows():
             if row.name in buy_dates:
-                buy.append(row['Close']*0.95)
+                buy.append(row['Close'] * 0.95)
             else:
                 buy.append(np.nan)
             if row.name in sell_dates:
-                sell.append(row['Close']*1.05)
-            else: 
+                sell.append(row['Close'] * 1.05)
+            else:
                 sell.append(np.nan)
         return buy, sell
 
@@ -230,14 +238,16 @@ def print_result(df, buy_dates, sell_dates, strategy, stock_code, cash, profit, 
     s = mpf.make_mpf_style(base_mpf_style='charles', marketcolors=mc)
     buy, sell = get_mark(df, buy_dates, sell_dates)
     apds = [
-     mpf.make_addplot(buy,type='scatter',markersize=100,marker='^'),
-     mpf.make_addplot(sell,type='scatter',markersize=100,marker='v'),
+        mpf.make_addplot(buy, type='scatter', markersize=100, marker='^'),
+        mpf.make_addplot(sell, type='scatter', markersize=100, marker='v'),
     ]
 
-    fig, axlist = mpf.plot(df,type='candle', style=s,mav=(5,10),volume=True,addplot=apds, returnfig=True)
+    fig, axlist = mpf.plot(df, type='candle', style=s, mav=(5, 10), volume=True, addplot=apds, returnfig=True)
     axlist[0].text(0.02, 0.95, f'Cash: {cash:.2f}', transform=axlist[0].transAxes, fontsize=12, verticalalignment='top')
-    axlist[0].text(0.02, 0.90, f'Profit: {profit:.2f}', transform=axlist[0].transAxes, fontsize=12, verticalalignment='top')
-    axlist[0].text(0.02, 0.85, f'Rate of Return: {rate_of_return:.2f}%', transform=axlist[0].transAxes, fontsize=12, verticalalignment='top')
+    axlist[0].text(0.02, 0.90, f'Profit: {profit:.2f}', transform=axlist[0].transAxes, fontsize=12,
+                   verticalalignment='top')
+    axlist[0].text(0.02, 0.85, f'Rate of Return: {rate_of_return:.2f}%', transform=axlist[0].transAxes, fontsize=12,
+                   verticalalignment='top')
     newxticks = []
     newxticks = []
     newlabels = []
@@ -252,8 +262,8 @@ def print_result(df, buy_dates, sell_dates, strategy, stock_code, cash, profit, 
             newlabels.append(ts.strftime(format))
 
     # Here we create the final tick and tick label:
-    newxticks.append(len(df)-1)
-    newlabels.append(df.index[len(df)-1].strftime(format))
+    newxticks.append(len(df) - 1)
+    newlabels.append(df.index[len(df) - 1].strftime(format))
 
     # set the xticks and labels with the new ticks and labels:
     axlist[0].set_xticks(newxticks)
@@ -264,13 +274,13 @@ def print_result(df, buy_dates, sell_dates, strategy, stock_code, cash, profit, 
 
     # save
     fig.savefig(f'Result/{strategy}_{stock_code}.jpg')
-    
+
     print('Result')
 
+
 # def print_record(record):
-    # for item in ['holding_share', 'cost', 'cash', 'profit']:
-        
-    
+# for item in ['holding_share', 'cost', 'cash', 'profit']:
+
 
 if __name__ == '__main__':
     main()
