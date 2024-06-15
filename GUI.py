@@ -119,9 +119,9 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
         row = stock_data.iloc[-1]
         sell(row)
         update_record()
-
-    print('Rate of return:', profit / initail_cash * 100)
-    return record, buy_dates, sell_dates
+    rate_of_return = profit / initail_cash * 100
+    print('Rate of return:', rate_of_return)
+    return record, buy_dates, sell_dates, cash, profit, rate_of_return
 
 def main():
     def on_submit():
@@ -157,8 +157,8 @@ def main():
             code = code.strip()
             stock_data = query_stock_data(conn, code)
             print(code)
-            record, buy_dates, sell_dates = simulate_martingale_strategy(stock_data, threshold, initial_investment, initial_cash, max_buy_times, use_trailing_stop, trailing_stop_percent, stop_profit_percent, buy_multiplier)
-            print_result(stock_data, buy_dates, sell_dates, 'Martinggale',code)
+            record, buy_dates, sell_dates, cash, profit, rate_of_return = simulate_martingale_strategy(stock_data, threshold, initial_investment, initial_cash, max_buy_times, use_trailing_stop, trailing_stop_percent, stop_profit_percent, buy_multiplier)
+            print_result(stock_data, buy_dates, sell_dates, 'Martinggale', code,cash, profit, rate_of_return )
 
         conn.close()
         messagebox.showinfo("Simulation Complete", "The simulation has been completed.")
@@ -226,7 +226,7 @@ def main():
 
     root.mainloop()
 
-def print_result(df, buy_dates, sell_dates, strategy,stock_code):
+def print_result(df, buy_dates, sell_dates, strategy, stock_code, cash, profit, rate_of_return):
     import mplfinance as mpf
     import numpy as np
 
@@ -252,6 +252,10 @@ def print_result(df, buy_dates, sell_dates, strategy,stock_code):
     ]
 
     fig, axlist = mpf.plot(df,type='candle', style=s,mav=(5,10),volume=True,addplot=apds, returnfig=True)
+
+    axlist[0].text(0.02, 0.95, f'Cash: {cash:.2f}', transform=axlist[0].transAxes, fontsize=12, verticalalignment='top')
+    axlist[0].text(0.02, 0.90, f'Profit: {profit:.2f}', transform=axlist[0].transAxes, fontsize=12, verticalalignment='top')
+    axlist[0].text(0.02, 0.85, f'Rate of Return: {rate_of_return:.2f}%', transform=axlist[0].transAxes, fontsize=12, verticalalignment='top')
     newxticks = []
     newlabels = []
     format = '%b-%d'
