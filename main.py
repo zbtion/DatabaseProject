@@ -1,11 +1,12 @@
+import tkinter as tk
+from tkinter import ttk
+from tkinter import messagebox
 import pymssql
 import pandas as pd
 
 
-stock_code = '2303,2308,2317,2330,2382,2412,2454,2881,2891,3711'
-#stock_code = '2382'
-#stock_code = '2891'
-#stock_code = '2303'
+#stock_code = '3711'
+
 def connect_sql_server():
     # you should create a db.py file to save your database settings
     from db import db_settings
@@ -43,102 +44,19 @@ def find_kd_cross(df):
     for i in range(1, len(df)):
         prev_row = df.iloc[i - 1]
         curr_row = df.iloc[i]
-        # 
+
         if prev_row['K'] < 20 and prev_row['D'] < 20 and prev_row['K'] < prev_row['D'] and curr_row['K'] > curr_row['D']:
-            golden_cross.append(curr_row.name)
-        # 
+            golden_cross.append(curr_row.name)  
         elif prev_row['K'] > 80 and prev_row['D'] > 80 and prev_row['K'] > prev_row['D'] and curr_row['K'] < curr_row['D']:
             death_cross.append(curr_row.name)  
 
     return golden_cross, death_cross
 
-# def simulate_martingale_strategy(stock_data):
-#     # define the trader
-#     holding_share = 0
-#     cost = 0
-#     cash = 10000000
-#     profit = 0
-#     last_sell_price = None
-#     record = {'holding_share':[], 'cost':[], 'cash':[], 'profit':[]}
-
-#     def update_record():
-#         nonlocal holding_share, cost, cash, profit, record
-#         for item in ['holding_share', 'cost', 'cash', 'profit']:
-#             record[item].append(locals()[item])
-
-#     # define the behavior
-#     def buy(row):
-#         nonlocal holding_share, cost, cash, buy_dates
-#         magnification = 2
-#         if holding_share == 0 and cash >= row['Close'] * 1000:
-#             holding_share = 1  # start from 1 share or you can change to other number
-#             cost += row['Close'] * 1000
-#             cash -= cost
-#             buy_dates.append(row.name)
-            
-#         else:
-#             if cash < row['Close'] * 1000 * holding_share * magnification:
-#                 return
-#             cost += row['Close'] * 1000 * holding_share * magnification
-#             cash -= row['Close'] * 1000 * holding_share * magnification
-#             holding_share += holding_share * magnification
-#             buy_dates.append(row.name)
-
-#     def sell(row):
-#         nonlocal holding_share, cost, cash, profit, sell_dates, last_sell_price 
-#         if holding_share != 0:
-#             last_sell_price = row['Close']
-#             profit += row['Close'] * 1000 * holding_share - cost
-#             cash += row['Close'] * 1000 * holding_share
-#             holding_share = 0
-#             cost = 0
-#             sell_dates.append(row.name)
-
-
-#     # here to implement the strategy
-#     threshold = 0.1
-#     buy_times = 0
-#     buy_dates, sell_dates = [], []
-#     golden_cross, death_cross = find_kd_cross(stock_data)
-
-#     for index, row in stock_data.iterrows():
-#         update_record()
-#         # if the price is lower than the threshold, buy         --add kd condition
-#         if (cost and ((row['Close'] * holding_share * 1000) / cost <= ( 1-threshold ) ) and row.name in golden_cross) or (holding_share == 0 and row.name in golden_cross):
-#             if last_sell_price is None or row['Close'] <= last_sell_price * 0.90 or row['Close'] >= last_sell_price * 1.1:
-#                 if buy_times == 3:
-#                     sell(row)
-#                     buy_times = 0
-#                     #print('sell',cash)
-#                 else:
-#                     buy(row)
-#                     buy_times += 1
-#                     #print('buy',cash)
-#         # if the price is higher than the threshold, sell
-#         elif (row['Close'] * holding_share * 1000) / (cost+1) >= (1 + 0.3):
-#             sell(row)
-#             buy_times = 0
-#             #print('sell',cash)
-#         # if the price is between the threshold, do nothing
-#         else:
-#             continue
-        
-#     if holding_share != 0:
-#         row = stock_data.iloc[-1]
-#         sell(row)
-#         update_record()
-
-#     print('cash:', cash)
-#     print('profit:', profit)
-#     #print('rate of return:',profit/10000000)
-
-#     return record, buy_dates, sell_dates
-
-def simulate_martingale_strategy(stock_data):
+def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_times, initial_holding_share, magnification):
     # define the trader
     holding_share = 0
     cost = 0
-    cash = 10000000
+    cash = initial_cash
     profit = 0
     record = {'holding_share':[], 'cost':[], 'cash':[], 'profit':[]}
 
@@ -148,68 +66,52 @@ def simulate_martingale_strategy(stock_data):
             record[item].append(locals()[item])
 
     # define the behavior
-    def buy(row, investment_amount):
+    def buy(row):
         nonlocal holding_share, cost, cash, buy_dates
-        shares_to_buy = investment_amount // row['Close']
-        if shares_to_buy == 0 or cash < shares_to_buy * row['Close']:
-            return
-        holding_share += shares_to_buy
-        cost += shares_to_buy * row['Close']
-        cash -= shares_to_buy * row['Close']
-        buy_dates.append(row.name)
+        #magnification = 5
+        if holding_share == 0 and cash >= row['Close'] * 1000:
+            holding_share = initial_holding_share  # start from 1 share or you can change to other number
+            cost += row['Close'] * 1000
+            cash -= cost
+            buy_dates.append(row.name)
+            
+        else:
+            if cash < row['Close'] * 1000 * holding_share * magnification:
+                return
+            cost += row['Close'] * 1000 * holding_share * magnification
+            cash -= row['Close'] * 1000 * holding_share * magnification
+            holding_share += holding_share * magnification
+            buy_dates.append(row.name)
 
     def sell(row):
         nonlocal holding_share, cost, cash, profit, sell_dates
         if holding_share != 0:
-            profit += row['Close'] * holding_share - cost
-            cash += row['Close'] * holding_share
+            profit += row['Close'] * 1000 * holding_share - cost
+            cash += row['Close'] * 1000 * holding_share
             holding_share = 0
             cost = 0
             sell_dates.append(row.name)
 
+
     # here to implement the strategy
-    threshold = 0.1
-    initial_investment = 250000
-    investment_amount = initial_investment
     buy_times = 0
     buy_dates, sell_dates = [], []
     golden_cross, death_cross = find_kd_cross(stock_data)
 
-    monitor_levels = [0.3 + i * 0.1 for i in range(int((2 - 0.3) / 0.1) + 1)]
-    max_profit_level = 0
-    
     for index, row in stock_data.iterrows():
         update_record()
-        # if the price is lower than the threshold, buy
-        if (((row['Close'] * holding_share) / (cost+1) <= (1 - threshold))) or (holding_share == 0 and row.name in golden_cross):
-            if buy_times == 5:
+        # if the price is lower than the threshold, buy         --add kd condition  
+        if ((cost - row['Close'] * 1000 * holding_share) / (cost + 1) >= threshold) or (holding_share == 0 and row.name in golden_cross):
+            if buy_times == max_buy_times:
                 sell(row)
                 buy_times = 0
-                investment_amount = initial_investment
-                max_price = 0
             else:
-                buy(row, investment_amount)
-                investment_amount *= 2   # double the investment amount each time
+                buy(row)
                 buy_times += 1
-                max_price = row['Close']
         # if the price is higher than the threshold, sell
-        elif holding_share > 0:
-            current_profit_percent = (row['Close'] - (cost / holding_share)) / (cost / holding_share)
-            # Update max_profit_level based on current_profit_percent
-            for level in monitor_levels:
-                if current_profit_percent >= level:
-                    max_profit_level = max(max_profit_level, level)
-                    
-
-            # Check for selling conditions based on max_profit_level
-            if max_profit_level > 0:
-                next_level = max_profit_level - 0.1  # Example: 20% level, 15% next level
-                if current_profit_percent < next_level:
-                    sell(row)
-                    buy_times = 0
-                    investment_amount = initial_investment
-                    max_profit_level = 0  # Reset max_profit_level after selling
-                    continue
+        elif (row['Close'] * 1000 * holding_share - cost) / (cost + 1) >= threshold and row.name in death_cross:
+            sell(row)
+            buy_times = 0
         # if the price is between the threshold, do nothing
         else:
             continue
@@ -219,41 +121,95 @@ def simulate_martingale_strategy(stock_data):
         sell(row)
         update_record()
 
-    #print('cash:', cash)
-    #print('profit:', profit)
-    print('rate of return',profit/100000)
+    rate_of_return = profit / initial_cash * 100
+    print('cash:', cash)
+    print('profit:', profit)
 
-    return record, buy_dates, sell_dates
+    return record, buy_dates, sell_dates, cash, profit, rate_of_return
 
 def main():
-    try:
-        conn = connect_sql_server()
-    except Exception as e:
-        print(e)
-        return
-    # query stock data by stock code
-    stock_codes = stock_code.split(',')
-    for code in stock_codes:
-        stock_data = query_stock_data(conn, code)
-
-        # simulate the martingale strategy
-        # something output means I am not sure what the output format is ---109502529
-        # change somethingoutput to record, buy_dates and sell_dates ---112522023
-        print(code)
-        record_mar, buy_dates_mar, sell_dates_mar = simulate_martingale_strategy(stock_data)
-        # record_gb, buy_date_gb, sell_dates_gb = simulate_gb_strategy(stock_data)
-        # calculate cash flow(?) if save in a bank(?)
-
-        # plot the result
-        #print_result(stock_data, buy_dates_mar, sell_dates_mar, 'Martinggale')
-        # want to add subplot of cost/profit/cash flow under the result, add later :)
-        # print_record(record_mar)
-
-    conn.close()
+    def on_submit():
+        try:
+            stock_codes = stock_code_entry.get().split(',')
+            initial_cash = float(initial_cash_entry.get())
+            threshold = float(threshold_entry.get()) / 100
+            max_buy_times = int(max_buy_times_entry.get())
+            initial_holding_share = int(initial_holding_share_entry.get())
+            magnification = int(magnification_entry.get())
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Please enter valid values.")
+            return
+        
+        try:
+            conn = connect_sql_server()
+        except Exception as e:
+            print(e)
+            return
 
 
+        for code in stock_codes:
+            code = code.strip()
+            stock_data = query_stock_data(conn, code)
+            print(code)
+            record, buy_dates, sell_dates, cash, profit, rate_of_return = simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_times, initial_holding_share, magnification)
+            print_result(stock_data, buy_dates, sell_dates, 'Martinggale', code,cash, profit, rate_of_return )
 
-def print_result(df, buy_dates, sell_dates, strategy):
+        conn.close()
+        messagebox.showinfo("Simulation Complete", "The simulation has been completed.")
+        root.destroy()
+
+    root = tk.Tk()
+    root.title("Martingale Strategy Simulator")
+
+    def validate_float(value):
+        if value == "":
+            return True
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
+
+    validate_float_command = root.register(validate_float)
+
+    ttk.Label(root, text="Stock Codes (comma separated)").grid(column=0, row=0, padx=10, pady=5)
+    stock_code_entry = ttk.Entry(root, width=50)  
+    stock_code_entry.grid(column=1, row=0, padx=10, pady=5)
+
+    # 初始現金
+    ttk.Label(root, text="Initial Cash").grid(column=0, row=1, padx=10, pady=5)
+    initial_cash_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
+    initial_cash_entry.grid(column=1, row=1, padx=10, pady=5)
+
+    # 閾值
+    ttk.Label(root, text="Threshold (%)").grid(column=0, row=2, padx=10, pady=5)
+    threshold_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
+    threshold_entry.grid(column=1, row=2, padx=10, pady=5)
+
+    # 最大購買次數
+    ttk.Label(root, text="Max Buy Times").grid(column=0, row=3, padx=10, pady=5)
+    max_buy_times_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
+    max_buy_times_entry.grid(column=1, row=3, padx=10, pady=5)
+
+    # 初始持股數
+    ttk.Label(root, text="Initial Holding Share(*1000)").grid(column=0, row=4, padx=10, pady=5)
+    initial_holding_share_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
+    initial_holding_share_entry.grid(column=1, row=4, padx=10, pady=5)
+
+    # 放大倍數
+    ttk.Label(root, text="Magnification").grid(column=0, row=5, padx=10, pady=5)
+    magnification_entry = ttk.Entry(root, validate="key", validatecommand=(validate_float_command, '%P'))
+    magnification_entry.grid(column=1, row=5, padx=10, pady=5)
+
+    # 提交按鈕
+    submit_button = ttk.Button(root, text="Run Simulation", command=on_submit)
+    submit_button.grid(column=0, row=6, columnspan=2, padx=10, pady=20)
+
+    root.mainloop()
+
+
+
+def print_result(df, buy_dates, sell_dates, strategy, stock_code, cash, profit, rate_of_return):
     import mplfinance as mpf
     import numpy as np
 
@@ -261,11 +217,11 @@ def print_result(df, buy_dates, sell_dates, strategy):
         buy, sell = [], []
         for index, row in df.iterrows():
             if row.name in buy_dates:
-                buy.append(row['Close']-10)
+                buy.append(row['Close']*0.95)
             else:
                 buy.append(np.nan)
             if row.name in sell_dates:
-                sell.append(row['Close']+10)
+                sell.append(row['Close']*1.05)
             else: 
                 sell.append(np.nan)
         return buy, sell
@@ -279,6 +235,10 @@ def print_result(df, buy_dates, sell_dates, strategy):
     ]
 
     fig, axlist = mpf.plot(df,type='candle', style=s,mav=(5,10),volume=True,addplot=apds, returnfig=True)
+    axlist[0].text(0.02, 0.95, f'Cash: {cash:.2f}', transform=axlist[0].transAxes, fontsize=12, verticalalignment='top')
+    axlist[0].text(0.02, 0.90, f'Profit: {profit:.2f}', transform=axlist[0].transAxes, fontsize=12, verticalalignment='top')
+    axlist[0].text(0.02, 0.85, f'Rate of Return: {rate_of_return:.2f}%', transform=axlist[0].transAxes, fontsize=12, verticalalignment='top')
+    newxticks = []
     newxticks = []
     newlabels = []
     format = '%b-%d'

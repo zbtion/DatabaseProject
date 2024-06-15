@@ -42,9 +42,9 @@ def find_kd_cross(df):
 
     return golden_cross, death_cross
 
-def simulate_martingale_strategy(stock_data, threshold, initial_investment, initail_cash, max_buy_times, use_trailing_stop, trailing_stop_percent, stop_profit_percent, buy_multiplier):
+def simulate_martingale_strategy(stock_data, threshold, initial_investment, initial_cash, max_buy_times, use_trailing_stop, trailing_stop_percent, stop_profit_percent, buy_multiplier):
     holding_share = 0
-    cash = initail_cash
+    cash = initial_cash
     cost = 0
     profit = 0
     record = {'holding_share':[], 'cost':[], 'cash':[], 'profit':[]}
@@ -119,7 +119,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
         row = stock_data.iloc[-1]
         sell(row)
         update_record()
-    rate_of_return = profit / initail_cash * 100
+    rate_of_return = profit / initial_cash * 100
     print('Rate of return:', rate_of_return)
     return record, buy_dates, sell_dates, cash, profit, rate_of_return
 
@@ -162,6 +162,7 @@ def main():
 
         conn.close()
         messagebox.showinfo("Simulation Complete", "The simulation has been completed.")
+        root.destroy()
 
     root = tk.Tk()
     root.title("Martingale Strategy Simulator")
