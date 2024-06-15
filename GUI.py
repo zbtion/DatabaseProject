@@ -78,7 +78,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
     buy_dates, sell_dates = [], []
     golden_cross, death_cross = find_kd_cross(stock_data)
 
-    monitor_levels = [stop_profit_percent + i * 0.1 for i in range(int((2 - stop_profit_percent) / 0.1) + 1)]
+    monitor_levels = [stop_profit_percent + i * trailing_stop_percent for i in range(int((100 - stop_profit_percent) / trailing_stop_percent) + 1)]
     max_profit_level = 0
     
     for index, row in stock_data.iterrows():
