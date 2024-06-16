@@ -63,6 +63,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
     cash = initial_cash
     profit = 0
     record = {'holding_share': [], 'cost': [], 'cash': [], 'profit': []}
+    buy_times = 0
 
     def update_record():
         nonlocal holding_share, cost, cash, profit, record
@@ -71,7 +72,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
 
     # define the behavior
     def buy(row):
-        nonlocal holding_share, cost, cash, buy_dates
+        nonlocal holding_share, cost, cash, buy_dates, buy_times
         #magnification = 5
         if holding_share == 0 and cash >= row['Close'] * 1000:
             holding_share = initial_holding_share  # start from 1 share or you can change to other number
@@ -86,18 +87,20 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
             cash -= row['Close'] * 1000 * holding_share * magnification
             holding_share += holding_share * magnification
             buy_dates.append(row.name)
+            buy_times += 1
 
     def sell(row):
-        nonlocal holding_share, cost, cash, profit, sell_dates
+        nonlocal holding_share, cost, cash, profit, sell_dates, buy_times
         if holding_share != 0:
             profit += row['Close'] * 1000 * holding_share - cost
             cash += row['Close'] * 1000 * holding_share
             holding_share = 0
             cost = 0
             sell_dates.append(row.name)
+            buy_times = 0
 
     # here to implement the strategy
-    buy_times = 0
+
     buy_dates, sell_dates = [], []
     golden_cross, death_cross = find_kd_cross(stock_data)
 
@@ -107,15 +110,15 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
         if (((cost - row['Close'] * 1000 * holding_share) / (cost + 1) >= threshold) and holding_share != 0) or (
                 holding_share == 0 and row.name in golden_cross):
             if buy_times == max_buy_times:
+                print(f"before sell at max_buy_time: {row['Close']}, holding_share: {holding_share}, cost: {cost}, max_buy_time: {max_buy_times}, buy_time: {buy_times}")
                 sell(row)
-                buy_times = 0
             else:
                 buy(row)
-                buy_times += 1
+                print(f"buy at row: {row.name}")
         # if the price is higher than the threshold, sell
-        elif (row['Close'] * 1000 * holding_share - cost) / (cost + 1) >= threshold and row.name in death_cross:
+        elif (row['Close'] * 1000 * holding_share - cost) / (cost + 1) >= (1 + threshold) and row.name in death_cross:
+            print(f"before sell: row[Close]: {row['Close']}, holding_share: {holding_share}, cost: {cost}")
             sell(row)
-            buy_times = 0
         # if the price is between the threshold, do nothing
         else:
             continue
