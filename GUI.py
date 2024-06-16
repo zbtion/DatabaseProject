@@ -110,7 +110,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
                     investment_amount = initial_investment
                     max_profit_level = 0
                     continue
-            elif not use_trailing_stop and current_profit_percent >= stop_profit_percent:
+            elif not use_trailing_stop and current_profit_percent >= stop_profit_percent and row.name in death_cross:
                 sell(row)
                 investment_amount = initial_investment
                 continue
