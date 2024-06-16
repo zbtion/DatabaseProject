@@ -74,7 +74,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
     def buy(row):
         nonlocal holding_share, cost, cash, buy_dates, buy_times
         #magnification = 5
-        if holding_share == 0 and cash >= row['Close'] * 1000:
+        if holding_share == 0 and cash >= row['Close'] * 1000 * initial_holding_share:
             holding_share = initial_holding_share  # start from 1 share or you can change to other number
             cost += row['Close'] * 1000 * holding_share
             cash -= cost
