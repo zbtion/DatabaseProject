@@ -116,7 +116,7 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
                 buy(row)
                 print(f"buy at row: {row.name}")
         # if the price is higher than the threshold, sell
-        elif (row['Close'] * 1000 * holding_share - cost) / (cost + 1) >= (1 + threshold) and row.name in death_cross:
+        elif (row['Close'] * 1000 * holding_share - cost) / (cost + 1) >= threshold and row.name in death_cross:
             print(f"before sell: row[Close]: {row['Close']}, holding_share: {holding_share}, cost: {cost}")
             sell(row)
         # if the price is between the threshold, do nothing

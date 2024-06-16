@@ -47,15 +47,16 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
     cash = initial_cash
     cost = 0
     profit = 0
-    record = {'holding_share':[], 'cost':[], 'cash':[], 'profit':[]}
+    buy_times = 0
+    record = {'holding_share':[], 'cost':[], 'cash':[], 'profit':[], 'buy_times': []}
 
     def update_record():
-        nonlocal holding_share, cost, cash, profit, record
-        for item in ['holding_share', 'cost', 'cash', 'profit']:
+        nonlocal holding_share, cost, cash, profit, record, buy_times
+        for item in ['holding_share', 'cost', 'cash', 'profit', 'buy_times']:
             record[item].append(locals()[item])
 
     def buy(row, investment_amount):
-        nonlocal holding_share, cost, cash, buy_dates
+        nonlocal holding_share, cost, cash, buy_dates, buy_times
         shares_to_buy = investment_amount // row['Close']
         if shares_to_buy == 0 or cash < shares_to_buy * row['Close']:
             return
@@ -63,18 +64,19 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
         cost += shares_to_buy * row['Close']
         cash -= shares_to_buy * row['Close']
         buy_dates.append(row.name)
+        buy_times += 1
 
     def sell(row):
-        nonlocal holding_share, cost, cash, profit, sell_dates
+        nonlocal holding_share, cost, cash, profit, sell_dates, buy_times
         if holding_share != 0:
             profit += row['Close'] * holding_share - cost
             cash += row['Close'] * holding_share
             holding_share = 0
             cost = 0
             sell_dates.append(row.name)
+            buy_times = 0
 
     investment_amount = initial_investment
-    buy_times = 0
     buy_dates, sell_dates = [], []
     golden_cross, death_cross = find_kd_cross(stock_data)
 
@@ -86,13 +88,11 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
         if (((row['Close'] * holding_share) / (cost+1) <= (1 - threshold)) and holding_share != 0) or (holding_share == 0 and row.name in golden_cross):
             if buy_times == max_buy_times:
                 sell(row)
-                buy_times = 0
                 investment_amount = initial_investment
                 max_price = 0
             else:
                 buy(row, investment_amount)
                 investment_amount *= buy_multiplier
-                buy_times += 1
                 max_price = row['Close']
         elif holding_share > 0:
             current_profit_percent = (row['Close'] - (cost / holding_share)) / (cost / holding_share)
@@ -103,13 +103,11 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
                 next_level = max_profit_level - trailing_stop_percent
                 if current_profit_percent < next_level:
                     sell(row)
-                    buy_times = 0
                     investment_amount = initial_investment
                     max_profit_level = 0
                     continue
             elif not use_trailing_stop and current_profit_percent >= stop_profit_percent:
                 sell(row)
-                buy_times = 0
                 investment_amount = initial_investment
                 continue
         else:
