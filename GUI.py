@@ -79,21 +79,25 @@ def simulate_martingale_strategy(stock_data, threshold, initial_investment, init
     investment_amount = initial_investment
     buy_dates, sell_dates = [], []
     golden_cross, death_cross = find_kd_cross(stock_data)
+    latest_buy_price = 0
 
-    monitor_levels = [stop_profit_percent + i * trailing_stop_percent for i in range(int((100 - stop_profit_percent) / trailing_stop_percent) + 1)]
+    if trailing_stop_percent == 0:
+        monitor_levels = [stop_profit_percent]
+    else:
+        monitor_levels = [stop_profit_percent + i * trailing_stop_percent for i in
+                          range(int((100 - stop_profit_percent) / trailing_stop_percent) + 1)]
     max_profit_level = 0
     
     for index, row in stock_data.iterrows():
         update_record()
-        if (((row['Close'] * holding_share) / (cost+1) <= (1 - threshold)) and holding_share != 0) or (holding_share == 0 and row.name in golden_cross):
+        if (row['Close'] <= latest_buy_price * (1-threshold) and holding_share != 0) or (holding_share == 0 and row.name in golden_cross):
             if buy_times == max_buy_times:
                 sell(row)
                 investment_amount = initial_investment
-                max_price = 0
             else:
                 buy(row, investment_amount)
+                latest_buy_price = row['Close']
                 investment_amount *= buy_multiplier
-                max_price = row['Close']
         elif holding_share > 0:
             current_profit_percent = (row['Close'] - (cost / holding_share)) / (cost / holding_share)
             for level in monitor_levels:

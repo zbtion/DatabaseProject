@@ -79,15 +79,19 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
             cost += row['Close'] * 1000 * holding_share
             cash -= cost
             buy_dates.append(row.name)
+            buy_times += 1
+            print(f"buy at row: {row.name} where holding_share = 0")
 
         else:
             if cash < row['Close'] * 1000 * holding_share * magnification:
+                print("exceed")
                 return
             cost += row['Close'] * 1000 * holding_share * magnification
             cash -= row['Close'] * 1000 * holding_share * magnification
             holding_share += holding_share * magnification
             buy_dates.append(row.name)
             buy_times += 1
+            print(f"buy at row: {row.name}")
 
     def sell(row):
         nonlocal holding_share, cost, cash, profit, sell_dates, buy_times
@@ -103,18 +107,19 @@ def simulate_martingale_strategy(stock_data, threshold, initial_cash, max_buy_ti
 
     buy_dates, sell_dates = [], []
     golden_cross, death_cross = find_kd_cross(stock_data)
+    latest_buy_price = 0
 
     for index, row in stock_data.iterrows():
         update_record()
         # if the price is lower than the threshold, buy         --add kd condition  
-        if (((cost - row['Close'] * 1000 * holding_share) / (cost + 1) >= threshold) and holding_share != 0) or (
+        if (holding_share != 0 and row['Close'] <= latest_buy_price * (1-threshold)) or (
                 holding_share == 0 and row.name in golden_cross):
             if buy_times == max_buy_times:
                 print(f"before sell at max_buy_time: {row['Close']}, holding_share: {holding_share}, cost: {cost}, max_buy_time: {max_buy_times}, buy_time: {buy_times}")
                 sell(row)
             else:
                 buy(row)
-                print(f"buy at row: {row.name}")
+                latest_buy_price = row['Close']
         # if the price is higher than the threshold, sell
         elif (row['Close'] * 1000 * holding_share - cost) / (cost + 1) >= threshold and row.name in death_cross:
             print(f"before sell: row[Close]: {row['Close']}, holding_share: {holding_share}, cost: {cost}")
